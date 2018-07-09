@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Alerta Ciudadana</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="static/leaflet.css"/>
+    <link rel="stylesheet" href="static/jquery-ui.min.css">
+    <!--link rel="stylesheet" href="/resources/demos/style.css"-->
+
+    <script src="static/leaflet.js"></script>
+    <script src="static/jquery.min.js"></script>
+    <script src="static/jquery-ui.min.js"></script>
+    <script type="text/javascript">
+        var root = location.host;
+        //var ws = new WebSocket("ws://localhost:9981");
+        /*        ws.onopen = function () {
+                    ws.send('demo');
+                };*/
+    </script>
+
+    <script>
+        $(function () {
+            $(function () {
+                function log(message) {
+                    $("<div>").text(message).prependTo("#log");
+                    $("#log").scrollTop(0);
+                }
+
+                $("#dato").autocomplete({
+                    source: function (request, response) {
+                        var criterio = $("#buscador input[type='radio']:checked").val();
+                        ;
+                        //console.log(e.latlng);
+                        $.ajax({
+                            url: "http://localhost:8080/busqueda",
+                            dataType: "json",
+                            data: {
+                                term: request.term,
+                                criterio: criterio
+                            },
+                            success: function (data) {
+                                //console.log(data['data']);
+                                response($.map(data['data'], function (item) {
+                                    return {
+                                        term: item.name,
+                                        lat: item.location.lat,
+                                        long: item.location.long,
+                                        id: item.id,
+                                        label: item.name,
+                                        //html: item.html
+                                    }
+                                }));
+                                //response( data['data'] );
+                            }
+                        });
+                    },
+                    minLength: 4,
+                    select: function (event, ui) {
+                        var criterio = $("#buscador input[type='radio']:checked").val();
+                        ;
+
+                        var lat = (ui.item.lat);
+                        var long = (ui.item.long);
+                        //var html = '';
+
+                        map.setView(new L.LatLng(lat, long), 15);
+                        if (theMarker != undefined) {
+                            map.removeLayer(theMarker);
+                            map.removeLayer(theCircle);
+                        }
+                        ;
+                        if (criterio == 'candidato') {
+                            $.get("http://localhost:8080/candidato/1", function (data, status) {
+                                html = data;
+                                theMarker = L.marker([lat, long]).addTo(map).bindPopup(html).openPopup();
+                                //html = data;
+                            });
+                        } else if (criterio == 'partido') {
+                            $.get("http://localhost:8080/judicial", function (data, status) {
+                                var obj = JSON.parse(data);
+                                for (var i = 0, len = 200; i < len; i++) {
+                                    //console.log(obj[i]['coordenadas']);
+                                    coords = obj[i]['coordenadas'];
+                                    //console.log('aaa');
+                                    //console.log(coords);
+                                    //console.log('aaa');
+                                    if (coords) {
+                                        html = "<table bgcolor=\"#FFFF00\">\n" +
+                                        "  <tr>\n" +
+                                        "    <td>Candidato:" + obj[i]['candidato'] + "</td>\n" +
+                                        "  </tr>\n" +
+                                        "  <tr>\n" +
+                                        "    <td>Cargo:" + obj[i]['cargo'] + "</td>\n" +
+                                        "  </tr>\n" +
+                                        "  <tr>\n" +
+                                        "    <td>Materia:" + obj[i]['materia'] + "</td>\n" +
+                                        "  </tr>\n" +
+                                            "  <tr>\n" +
+                                            "    <td>Lugar:" + obj[i]['region'] + "-" + obj[i]['provincia'] + "-" + obj[i]['distrito'] + "</td>\n" +
+                                            "  </tr>\n"
+                                        "</table>"
+                                        //html = "Candidato:"+obj[i]['candidato']+"<br>Cargo:"+obj[i]['cargo']+"<br>materia:"+obj[i]['materia']
+                                        theMarker = L.marker(obj[i]['coordenadas'], {icon: yellowIcon}).addTo(map).bindPopup(html).openPopup();
+                                        //L.marker([51.5, -0.09], {icon: greenIcon}).addTo(map);
+                                    }
+
+                                }
+                                ;
+                                //console.log(obj);
+                                //html = data;
+                                //theMarker = L.marker([lat, long]).addTo(map).bindPopup(html).openPopup();
+                                //html = data;
+                            });
+                        } else {
+                            $.get("http://localhost:8080/lugar/1", function (data, status) {
+                                html = data;
+                                theMarker = L.marker([lat, long]).addTo(map).bindPopup(html).openPopup();
+                                //html = data;
+                            });
+                        }
+                        //Add a marker to show where you clicked.
+                        //theMarker = L.marker([lat,long]).addTo(map).bindPopup(html).openPopup();
+                        //L.marker([lat,long]).addTo(map).bindPopup(ui.item.html).openPopup();
+                        //L.circleMarker([lat, long]).addTo(map);
+                        //log("Selected: " + ui.item.term.toUpperCase() + " aka " + ui.item.id.toUpperCase());
+                    }
+                });
+            });
+        });
+    </script>
+
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        html, body, #map {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div align="center">
+    <form method="post" name="buscador" id="buscador">
+        <div class="ui-widget">
+            <label>
+                <input type="radio" name="criterio" value="candidato"> Candidato
+            </label>
+            <label>
+                <input type="radio" name="criterio" value="partido"> Partido Político
+            </label>
+            <label>
+                <input type="radio" name="criterio" value="lugar" checked> Lugar
+            </label>
+            <input name="dato" id="dato" type="text"/>
+        </div>
+    </form>
+</div>
+<div id="map"></div>
+<div id="container"></div>
+<script>
+    var map = L.map('map');
+    var theMarker = {};
+    var theCircle = {}
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    function onLocationFound(e) {
+        var radius = e.accuracy / 2;
+        lat = e.latlng.lat;
+        long = e.latlng.lng;
+
+        /*        L.marker(e.latlng).addTo(map)
+                    .bindPopup("Te encuentras a " + radius + " metros de este punto").openPopup();
+
+                L.circle(e.latlng, radius).addTo(map);*/
+        if (theMarker != undefined) {
+            map.removeLayer(theMarker);
+            map.removeLayer(theCircle);
+        }
+        ;
+
+        //Add a marker to show where you clicked.
+        $.get("http://localhost:8080/judicial", function (data, status) {
+            var obj = JSON.parse(data);
+            for (var i = 0, len = 200; i < len; i++) {
+                //console.log(obj[i]['coordenadas']);
+                coords = obj[i]['coordenadas'];
+                //console.log('aaa');
+                //console.log(coords);
+                //console.log('aaa');
+                if (coords) {
+                    html = "<table bgcolor=\"#FFFF00\">\n" +
+                        "  <tr>\n" +
+                        "    <td>Candidato:" + obj[i]['candidato'] + "</td>\n" +
+                        "  </tr>\n" +
+                        "  <tr>\n" +
+                        "    <td>Cargo:" + obj[i]['cargo'] + "</td>\n" +
+                        "  </tr>\n" +
+                        "  <tr>\n" +
+                        "    <td>Materia:" + obj[i]['materia'] + "</td>\n" +
+                        "  </tr>\n" +
+                        "  <tr>\n" +
+                        "    <td>Lugar:" + obj[i]['region'] + "-" + obj[i]['provincia'] + "-" + obj[i]['distrito'] + "</td>\n" +
+                        "  </tr>\n"
+                    "</table>"
+                    //html = "Candidato:"+obj[i]['candidato']+"<br>Cargo:"+obj[i]['cargo']+"<br>materia:"+obj[i]['materia']
+                    theMarker = L.marker(obj[i]['coordenadas'], {icon: yellowIcon}).addTo(map).bindPopup(html).openPopup();
+                    //L.marker([51.5, -0.09], {icon: greenIcon}).addTo(map);
+                }
+
+            }
+            ;
+            //console.log(obj);
+            //html = data;
+            //theMarker = L.marker([lat, long]).addTo(map).bindPopup(html).openPopup();
+            //html = data;
+        });
+        theMarker = L.marker([lat, long]).addTo(map).bindPopup("Te encuentras a " + radius + " metros de este punto").openPopup();
+        theCircle = L.circle(e.latlng, radius).addTo(map);
+
+        /*        console.log('aaa');
+                $.get("http://localhost:8080/judicial", function (data, status) {
+                    var obj = JSON.parse(data);
+                    console.log(obj);
+        /!*            for (var i = 0, len = data.length; i < len; i++) {
+                        console.log(data[i]);
+                    }*!/
+                    //theMarker = L.marker([lat, long]).addTo(map).bindPopup(html).openPopup();
+                    //html = data;
+                });*/
+    }
+
+    function onLocationError(e) {
+        alert(e.message);
+    }
+
+    var theMarker = {};
+
+
+
+    map.on('locationfound', onLocationFound);
+    map.on('locationerror', onLocationError);
+
+    map.locate({setView: true, maxZoom: 14});
+
+    var yellowIcon = new L.Icon({
+        iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    /*    ws.onmessage = function (evt) {
+            data_val = evt.data;
+            console.log(data_val);
+            str = jQuery.parseJSON(data_val);
+            coords = str['coordinates'];
+            if (typeof coords !== 'undefined') {
+                L.marker(coords).addTo(map).bindPopup(str['html']).openPopup();
+            }
+            map.locate({setView: true, maxZoom: 14});
+        };*/
+
+</script>
+
+
+</body>
+</html>
